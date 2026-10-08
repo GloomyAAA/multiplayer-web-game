@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Puzzle Game - Multiplayer Block Puzzle</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        /* 游戏布局 - 消息放在侧边栏 */
+        .game-wrapper {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 2rem;
+        }
+        
+        /* 侧边栏消息区域 */
+        .game-message-container {
+            background: white;
+            border-radius: 8px;
+            padding: 0.8rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .game-message {
+            text-align: center;
+            font-size: 0.9rem;
+            font-weight: bold;
+            padding: 0.5rem;
+            border-radius: 8px;
+            transition: opacity 0.3s;
+            min-height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        /* 棋盘区域 - 不再包含消息 */
+        .game-board-area {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            width: 100%;
+            max-width: 550px;
+            margin: 0 auto;
+            background: #ecf0f1;
+            padding: 1.5rem;
+            border-radius: 8px;
+            transition: none !important;
+        }
+        
+        /* 倒计时样式 */
+        .countdown-timer {
+            text-align: center;
+            padding: 0.8rem;
+            margin: 0.5rem 0;
+            background: #2c3e50;
+            color: white;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: bold;
+        }
+        
+        .countdown-timer.warning {
+            background: #e74c3c;
+            animation: pulse 0.5s infinite;
+        }
+        
+        /* 确保颜色显示 */
+        .block-pink i { color: #f8bbd0 !important; }
+        .block-purple i { color: #ce93d8 !important; }
+        .block-green i { color: #a5d6a7 !important; }
+        .block-blue i { color: #90caf9 !important; }
+        
+        .grid-cell i { font-size: 1.8rem; }
+        .current-block i { font-size: 2.5rem; }
+        
+        .grid-cell {
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            aspect-ratio: 1;
+            min-width: 70px;
+            min-height: 70px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            border: 1px solid #e0e0e0;
+        }
+        
+        .grid-cell.empty {
+            background: #fafafa;
+            border: 2px dashed #ddd;
+        }
+        
+        .grid-cell.empty:hover {
+            background: #f0f0f0;
+            transform: scale(1.02);
+        }
+        
+        .current-block {
+            width: 100px;
+            height: 100px;
+            margin: 0.5rem auto;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f5f5f5;
+            border: 1px solid #ddd;
+        }
+        
+        .turn-indicator {
+            padding: 0.8rem;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: bold;
+            margin: 0.5rem 0;
+        }
+        
+        .turn-indicator.your-turn {
+            background: #27ae60;
+            color: white;
+            animation: pulse 1s infinite;
+        }
+        
+        .turn-indicator.waiting {
+            background: #f39c12;
+            color: white;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+            100% { transform: scale(1); }
+        }
+        
+        .scoreboard ul, .players-list ul {
+            max-height: 200px;
+            overflow-y: auto;
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        .scoreboard li, .players-list li {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #ecf0f1;
+        }
+        
+        .current-turn {
+            background: #27ae60;
+            color: white;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            margin-left: 0.5rem;
+        }
+        
+        /* 侧边栏标题样式 */
+        .sidebar-title {
+            font-size: 1.2rem;
+            margin-bottom: 0.8rem;
+            color: #2c3e50;
+        }
+        
+        @media (max-width: 768px) {
+            .game-wrapper {
+                grid-template-columns: 1fr;
+            }
+            .grid-cell {
+                min-width: 55px;
+                min-height: 55px;
+            }
+            .current-block {
+                width: 80px;
+                height: 80px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <nav>
+            <div class="nav-brand">JC2503 Assignment</div>
+            <ul class="nav-links">
+                <li><a href="/">Home</a></li>
+                <li><a href="/about">About</a></li>
+                <li><a href="/game" class="active">Game</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="container game-container">
+        <h1 class="page-title">Multiplayer Puzzle Game</h1>
+        
+        <div class="game-wrapper">
+            <!-- 左侧边栏 -->
+            <div class="game-sidebar">
+                <!-- 消息显示区域 - 放在侧边栏顶部 -->
+                <div class="game-message-container">
+                    <div id="game-message" class="game-message"></div>
+                </div>
+                
+                <div class="player-info">
+                    <div id="registration-area">
+                        <h2 style="font-size: 1.2rem; margin-bottom: 0.5rem;">🎮 Join the Game</h2>
+                        <input type="text" id="player-name" placeholder="Enter your name" maxlength="20">
+                        <button id="join-btn">🎯 Join Game</button>
+                        <p style="font-size: 0.8rem; margin-top: 0.5rem; color: #7f8c8d;">Enter a unique name to start playing!</p>
+                    </div>
+                    <div id="game-status" style="display: none;">
+                        <div class="player-name-display">
+                            <strong>👤 Player:</strong> <span id="current-player-name"></span>
+                        </div>
+                        <div id="turn-indicator" class="turn-indicator waiting">
+                            ⏳ Waiting for your turn...
+                        </div>
+                        <div id="countdown-timer" class="countdown-timer" style="display: none;">
+                            ⏰ Time remaining: <span id="timer-seconds">60</span> seconds
+                        </div>
+                        <div id="current-block-area" style="display: none;">
+                            <h3 style="font-size: 1rem; margin: 0.5rem 0;">🎲 Your Block:</h3>
+                            <div id="current-block" class="current-block"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="scoreboard">
+                    <h2 style="font-size: 1.2rem;">🏆 Scoreboard</h2>
+                    <ul id="score-list">
+                        <li>Waiting for players...</li>
+                    </ul>
+                </div>
+
+                <div class="players-list">
+                    <h2 style="font-size: 1.2rem;">👥 Players (Turn Order)</h2>
+                    <ul id="players-order">
+                        <li>No players yet</li>
+                    </ul>
+                </div>
+
+                <div class="game-info">
+                    <h2 style="font-size: 1.2rem;">ℹ️ Game Info</h2>
+                    <p><strong>📦 Blocks remaining:</strong> <span id="pool-size">16</span></p>
+                    <p><strong>🎯 Game Status:</strong> <span id="game-status-text">Waiting for players</span></p>
+                </div>
+
+                <div class="game-rules">
+                    <h2 style="font-size: 1.2rem;">📖 How to Play</h2>
+                    <ul>
+                        <li>⏰ Wait for your turn</li>
+                        <li>🎲 Click empty cell to place block</li>
+                        <li>⭐ Get points for lines of 3+ (same shape OR color)</li>
+                        <li>💰 Fill the grid for 16-point jackpot!</li>
+                        <li>⌛ 60 seconds per turn (watch the timer!)</li>
+                    </ul>
+                    <p style="margin-top: 0.8rem; font-size: 0.75rem; color: #aaa;">
+                        Shapes: ○ Circle, □ Square, ▶ Triangle, ★ Star
+                    </p>
+                </div>
+            </div>
+
+            <!-- 右侧棋盘区域 - 没有消息框 -->
+            <div class="game-board-area">
+                <div class="game-board" id="game-board"></div>
+                <p style="text-align: center; margin-top: 1rem; font-size: 0.8rem; color: #7f8c8d;">
+                    💡 Click on any empty cell to place your block
+                </p>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 JINGJING HU | JC2503 Web Application Development - University of Aberdeen</p>
+    </footer>
+
+    <script src="/js/game.js"></script>
+</body>
+</html>

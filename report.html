@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Report - JC2503 Web Application Development</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem;
+            background-color: #f5f6fa;
+            color: #2c3e50;
+        }
+        h1, h2, h3 {
+            color: #2c3e50;
+        }
+        h1 {
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 0.5rem;
+        }
+        h2 {
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 0.3rem;
+            margin-top: 1.5rem;
+        }
+        .reference {
+            background: #ecf0f1;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        code {
+            background: #ecf0f1;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+        }
+        ul, ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+        }
+        .figure {
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+            margin: 1rem 0;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .ai-acknowledgement {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+        footer {
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 1px solid #ddd;
+            text-align: center;
+            font-size: 0.9rem;
+            color: #7f8c8d;
+        }
+    </style>
+</head>
+<body>
+    <h1>JC2503 Web Application Development - Coursework Report</h1>
+    <p><strong>Name:</strong> JINGJING HU | <strong>Student ID:</strong> 50099024 | <strong>Programme:</strong> IMIS | <strong>Date:</strong> May 2025</p>
+
+    <h2>1. Overall Design of the Website</h2>
+    <p>The website consists of three main pages: an introduction page (root), an about page, and a multiplayer puzzle game page. The design follows a consistent visual theme using a blue gradient color scheme with clean, modern styling. The navigation system is implemented using a responsive header that allows users to easily switch between pages.</p>
+    
+    <p>The first two pages are static HTML/CSS pages that provide personal information. The introduction page includes a hero section, profile card with my personal details (JINGJING HU, IMIS student, ID: 50099024), feature grid, and technology stack list. The about page contains detailed academic background (including courses like Web Application Development, Database Systems, Computer Networks, Data Structures and Algorithms, Python Data Analysis), technical skills, and personal interests (reading, music, outdoor sports, dogs).</p>
+
+    <div class="figure">
+        <strong>Figure 1:</strong> Website Navigation Structure<br>
+        Home Page → About Page → Game Page (with full bidirectional navigation)
+    </div>
+
+    <h2>2. Game Application Architecture</h2>
+    <p>The puzzle game is a real-time multiplayer application built with Node.js, Express, and Socket.io. The game implements a turn-based block placement puzzle on a 4x4 grid where players earn points by creating lines of three or more blocks sharing the same shape or color. The game features four shapes (circle, square, triangle, star) and four pastel colors (pink, purple, green, blue).</p>
+
+    <h3>2.1 Server-Side Implementation</h3>
+    <p>The server maintains the complete game state including:</p>
+    <ul>
+        <li>The 4x4 grid with placed blocks</li>
+        <li>A pool of 16 unique blocks (4 shapes × 4 colors)</li>
+        <li>Active player list with turn order</li>
+        <li>Player scores</li>
+        <li>60-second turn timer for each player</li>
+    </ul>
+    <p>The <code>GameState</code> class encapsulates all game logic including block placement, line detection (horizontal, vertical, and all diagonals), score calculation, and jackpot handling when the grid is completely filled.</p>
+
+    <h3>2.2 Client-Server Communication with Socket.io</h3>
+    <p>Socket.io enables real-time, bidirectional communication between the server and all connected clients. The following events are implemented:</p>
+    
+    <ul>
+        <li><strong>register_player</strong> - Client sends player name; server adds player to the game and places them at the end of the turn order.</li>
+        <li><strong>get_current_block</strong> - Client requests the current block for their turn; server randomly selects a block from the pool.</li>
+        <li><strong>place_block</strong> - Client sends grid coordinates and the block; server validates the move and updates game state.</li>
+        <li><strong>game_update</strong> - Server broadcasts to all clients after each move, containing updated grid, scores, and current player.</li>
+        <li><strong>players_update</strong> - Server broadcasts when players join or leave.</li>
+        <li><strong>turn_changed</strong> - Server notifies all clients when the turn advances.</li>
+        <li><strong>turn_timeout</strong> - Server notifies when a player fails to act within 60 seconds.</li>
+    </ul>
+
+    <div class="figure">
+        <strong>Figure 2:</strong> Client-Server Communication Flow<br>
+        Client → (register_player) → Server → (players_update) → All Clients<br>
+        Client → (place_block) → Server → (game_update) → All Clients
+    </div>
+
+    <h3>2.3 Game Logic Implementation</h3>
+    <p>The core game mechanics work as follows:</p>
+    <ol>
+        <li><strong>Turn Management:</strong> Players take turns in a cyclic order. When a player joins, they are appended to the end of the list.</li>
+        <li><strong>Block Placement:</strong> On a player's turn, they receive a random block from the pool and must place it in an empty cell.</li>
+        <li><strong>Line Detection:</strong> After placement, the system checks all horizontal, vertical, and diagonal lines (including all possible 3+ length diagonals) for consecutive blocks sharing the same shape OR same color. Groups of 3+ blocks are cleared.</li>
+        <li><strong>Scoring:</strong> Each cleared block awards 1 point. Filling the entire grid awards a 16-point jackpot and clears all blocks back to the pool.</li>
+        <li><strong>Player Departure:</strong> When a player disconnects or times out, they are removed and the turn order adjusts automatically.</li>
+    </ol>
+
+    <h2>3. Reflection</h2>
+    <h3>3.1 Challenges Faced</h3>
+    <p><strong>Line Detection Algorithm:</strong> The most complex part was implementing the line detection system that identifies consecutive blocks of 3+ with matching shape OR color in all four directions (horizontal, vertical, and all diagonals). I extended the diagonal detection to cover all possible 3+ length diagonals, not just the two main diagonals, to ensure fair gameplay.</p>
+    
+    <p><strong>Real-Time State Synchronization:</strong> Ensuring all clients maintain the same game state required careful design of Socket.io events. Using server-authoritative architecture where the server validates all moves and broadcasts updates proved effective.</p>
+    
+    <p><strong>UI Stability:</strong> A challenge was preventing the game board from moving when notification messages appeared and disappeared. I solved this by moving the message display to the sidebar and using fixed-height containers with opacity transitions instead of display:none.</p>
+
+    <p><strong>Shape Display Consistency:</strong> Initially, CSS clip-path shapes would sometimes display incorrectly. I switched to using Font Awesome icons for shapes (circle, square, triangle, star) which provided consistent, reliable rendering across all browsers.</p>
+
+    <h3>3.2 Lessons Learned</h3>
+    <ul>
+        <li><strong>Socket.io Event Design:</strong> Learned the importance of designing clear event contracts with proper callback functions for acknowledgment.</li>
+        <li><strong>State Management:</strong> Keeping all game state on the server simplifies client logic and prevents cheating.</li>
+        <li><strong>CSS Grid Layout:</strong> Gained proficiency in using CSS Grid for both the game board layout and responsive page designs.</li>
+        <li><strong>Error Handling:</strong> Implementing proper error callbacks improves user experience by providing immediate feedback.</li>
+        <li><strong>Pastel Color Scheme:</strong> Learned to implement custom color schemes (pink, purple, green, blue) for better visual appeal.</li>
+        <li><strong>HTML Validation:</strong> Used the W3C Markup Validation Service to check my HTML code. It identified a heading level issue (h1 directly followed by h3). After fixing this by changing h3 tags to h2, all pages passed validation with no errors or warnings.</li>
+    </ul>
+
+    <h3>3.3 Possible Improvements</h3>
+    <ul>
+        <li>Add chat functionality for players to communicate during the game</li>
+        <li>Implement game history and replay feature</li>
+        <li>Add sound effects for block placement and scoring events</li>
+        <li>Create multiple difficulty levels or game modes</li>
+        <li>Add animations for block clearing and placement</li>
+        <li>Implement a leaderboard to save high scores</li>
+    </ul>
+
+    <h2>4. AI Tools Acknowledgement</h2>
+    <div class="ai-acknowledgement">
+        <p><strong>GenAI Usage Declaration:</strong></p>
+        <p>During the development of this assignment, I used the following GenAI tool:</p>
+        <ul>
+            <li><strong>DeepSeek:</strong> Used for code proofreading, debugging assistance, line detection algorithm refinement, CSS styling suggestions, and documentation formatting.</li>
+        </ul>
+        <p>All generated code was reviewed, understood, and modified to fit the specific requirements of this assignment. The report was written independently with AI assistance only for proofreading grammar and formatting.</p>
+    </div>
+
+    <h2>5. References</h2>
+    <div class="reference">
+        <p>[1] University of Aberdeen. (2025). <em>JC2503 Web Application Development - Lecture slides and practicals</em>. MyAberdeen.</p>
+    <p>[2] MDN Web Docs. (2025). <em>CSS Grid Layout and JavaScript documentation</em>. Retrieved from https://developer.mozilla.org/</p>
+    <p>[3] W3C. (2025). <em>Markup Validation Service</em>. Retrieved from https://validator.w3.org/</p>
+    <p>[4] W3C. (2025). <em>CSS Validation Service</em>. Retrieved from https://jigsaw.w3.org/css-validator/</p>
+    <p>[5] Font Awesome. (2025). <em>Free Icons</em>. Retrieved from https://fontawesome.com/</p>
+</div>
+
+    <footer>
+        <p>Word count: Approximately 880 words | Name: JINGJING HU | Student ID: 50099024 | This report is submitted as part of JC2503 coursework assessment</p>
+    </footer>
+</body>
+</html>
